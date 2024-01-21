@@ -44,7 +44,7 @@ def user_per_schedule_bar():
                      "SpiralAbyssFullStar": "cornflowerblue"
                  })
     fig.update_layout(title="Recent Six Schedule Abyss Upload Stat", title_x=0.5)
-    pio.write_html(fig, file="output/user_per_schedule_bar.html", auto_open=True, include_plotlyjs="cdn",
+    pio.write_html(fig, file="assets/output/user_per_schedule_bar.html", auto_open=True, include_plotlyjs="cdn",
                    include_mathjax="cdn")
 
 
@@ -207,7 +207,7 @@ def uid_layout():
     )
     fig.update_layout(showlegend=True, title_text="Uploader UID Information by Time",
                       title_x=0.5)
-    pio.write_html(fig, file="output/uploader_info.html", auto_open=True, include_plotlyjs="cdn",
+    pio.write_html(fig, file="assets/output/uploader_info.html", auto_open=True, include_plotlyjs="cdn",
                    include_mathjax="cdn")
 
 
@@ -245,16 +245,6 @@ def uid_layout_old():
             uid_group_count[this_uid_group] += 1
 
     fig.show()
-
-"""
-def current_abyss_utilization_rate_rank():
-    result = requests.get("https://homa.snapgenshin.com/Statistics/Avatar/UtilizationRate").json().get("data")
-    for floor in result:
-        floor_number = floor["floor"]
-        floor_data = sorted(floor["ranks"], key=lambda x: x["rate"], reverse=True)
-        floor_data = [{"item": id_to_name_dict[int(item["item"])], "rate": item["rate"]} for item in floor_data]
-        print(floor_data)
-"""
 
 
 if __name__ == "__main__":
