@@ -6,6 +6,7 @@ import plotly.io as pio
 from datetime import datetime
 import plotly.graph_objects as go
 import os
+import requests
 
 # MySQL Settings
 MYSQL_HOST = os.getenv('MYSQL_HOST')
@@ -14,6 +15,9 @@ MYSQL_USER = os.getenv('MYSQL_USER')
 MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
 MYSQL_DATABASE = os.getenv('MYSQL_DATABASE')
 db = MysqlConn(MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE)
+
+id_to_name_dict = {v: k for k, v in requests.get("https://api.uigf.org/dict/genshin/chs.json").json().items()}
+id_to_name_dict[10000005] = "旅行者"
 
 
 def user_per_schedule_bar():
@@ -59,28 +63,39 @@ def uid_layout():
     df.UID = df.UID.str.slice(stop=3).astype(int)
 
     df_sh = df[df.Uploader == "Snap Hutao"]
-    df_miao = df[df.Uploader == "miao-plugin"]
+    df_miao = df[df.Uploader.isin(["miao-plugin", "api-plugin"])]
     df_sh_bm = df[df.Uploader == "Snap Hutao Bookmark"]
+    df_gph = df[df.Uploader == "GenshinPizzaHelper"]
     df_dict = {
         "Snap Hutao": df_sh,
         "Snap Hutao Bookmark": df_sh_bm,
-        "miao-plugin": df_miao
+        "Miao-Plugin": df_miao,
+        "GenshinPizzaHelper": df_gph
     }
 
     uploader_color = {
         "Snap Hutao": "rgb(239,85,59)",
         "Snap Hutao Bookmark": "rgb(0,204,150)",
-        "miao-plugin": "rgb(99,110,250)"
+        "api-plugin": "rgb(99,110,250)",
+        "Miao-plugin": "rgb(99,110,250)",
+        "GenshinPizzaHelper": "rgb(38, 45, 116)"
     }
-    uid_group = [("1", "2"), "5", "6", "7", "8", "9"]
+    uid_group = {
+        "China": ("1", "2", "3"),
+        "bilibili": "5",
+        "America": "6",
+        "EU": "7",
+        "Asia": "8",
+        "TW/HK/MO": "9"
+    }
     fig = go.Figure()
-    for uid in uid_group:
+    for region, uid in uid_group.items():
         for k, v in df_dict.items():
             fig.add_trace(
                 go.Scatter(
                     x=v[v.UID.astype(str).str.startswith(uid)]["UID"],
                     y=v[v.UID.astype(str).str.startswith(uid)]["Time"],
-                    name=k,
+                    name=f"{k} {region}",
                     legendgroup=k,
                     mode="markers",
                     marker=dict(color=v[v.UID.astype(str).str.startswith(uid)]["Uploader"].apply(
@@ -202,7 +217,8 @@ def uid_layout_old():
     uploader_color = {
         "Snap Hutao": "rgb(239,85,59)",
         "Snap Hutao Bookmark": "rgb(0,204,150)",
-        "miao-plugin": "rgb(99,110,250)"
+        "miao-plugin": "rgb(99,110,250)",
+        "GenshinPizzaHelper": "rgb(38, 45, 116)"
     }
     sql = r"SELECT Uid, UploadTime, Uploader FROM records RIGHT JOIN spiral_abysses ON " \
           r"records.PrimaryId=spiral_abysses.RecordId"
@@ -230,8 +246,19 @@ def uid_layout_old():
 
     fig.show()
 
+"""
+def current_abyss_utilization_rate_rank():
+    result = requests.get("https://homa.snapgenshin.com/Statistics/Avatar/UtilizationRate").json().get("data")
+    for floor in result:
+        floor_number = floor["floor"]
+        floor_data = sorted(floor["ranks"], key=lambda x: x["rate"], reverse=True)
+        floor_data = [{"item": id_to_name_dict[int(item["item"])], "rate": item["rate"]} for item in floor_data]
+        print(floor_data)
+"""
+
 
 if __name__ == "__main__":
-    user_per_schedule_bar()
+    # user_per_schedule_bar()
     uid_layout()
-    #uid_layout_old()
+    # uid_layout_old()
+    # current_abyss_utilization_rate_rank()
