@@ -50,14 +50,27 @@ def make_current_utilization_rate_data() -> pd.DataFrame:
     return_df = pd.DataFrame(list(df_list.values()))
     return_df = return_df[
         ["schedule", "Floor 9", "Floor 10", "Floor 11", "Floor 12"] + list(AVAILABLE_LANGUAGES.keys())]
+    print("Successfully loaded data from Homa API")
     return return_df
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    from os import getcwd, path
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = getcwd()
+    except Exception:
+        base_path = path.abspath(".")
+
+    return path.join(base_path, relative_path)
 
 
 if __name__ == "__main__":
     df = make_current_utilization_rate_data()
     dropdown_options = [{'label': v, 'value': k} for k, v in AVAILABLE_LANGUAGES.items()]
 
-    app = Dash(__name__, external_stylesheets=[dbc.themes.JOURNAL])
+    app = Dash(__name__, external_stylesheets=[dbc.themes.JOURNAL], assets_folder=resource_path('assets'))
     app.title = 'Spiral Abyss Live Report by Masterain'
 
     # Main app layout
@@ -71,7 +84,7 @@ if __name__ == "__main__":
                                 dbc.NavbarBrand(
                                     html.A([
                                         html.Img(
-                                            src='/assets/masterain.webp',
+                                            src='assets/img/masterain.webp',
                                             height="30px", width="30px"),
                                         " Spiral Abyss Live Report"
                                     ], href="#", style={'color': 'white', 'text-decoration': 'none'}),
@@ -102,7 +115,7 @@ if __name__ == "__main__":
                         dbc.NavLink(
                             html.A([
                                 html.Img(
-                                    src='/assets/github-mark.svg',
+                                    src='assets/img/github-mark.svg',
                                     height="30px", width="30px")
                             ], href="https://github.com/Masterain98")
                         ),
@@ -207,7 +220,7 @@ if __name__ == "__main__":
         dbc.Card([
             dbc.CardHeader("Uploader Info"),
             dbc.CardBody([
-                html.Iframe(src='assets/output/uploader_info.html', width='90%', height='900')
+                html.Iframe(src='./assets/output/uploader_info.html', width='90%', height='900')
             ])
         ], className="mb-3"),
 
@@ -312,4 +325,4 @@ if __name__ == "__main__":
 
 
     if __name__ == '__main__':
-        app.run_server(debug=False)
+        app.run_server(debug=False, host='0.0.0.0')

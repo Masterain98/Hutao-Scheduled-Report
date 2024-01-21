@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  main:
+    container_name: spiral-abyss-report-generator
+    build:
+      context: .
+      dockerfile: Dockerfile.main
+    volumes:
+      - ./assets:/app/assets
+    env_file:
+      - .env
+    restart: always
+
+  abyss:
+    container_name: spiral-abyss-live-report-dashboard
+    build:
+      context: .
+      dockerfile: Dockerfile.abyss
+    volumes:
+      - ./assets:/app/assets
+    restart: always
+
+  tunnel:
+    container_name: spiral-abyss-live-report-dashboard-tunnel
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=key

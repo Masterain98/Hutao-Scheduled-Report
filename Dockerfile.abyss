@@ -1,0 +1,16 @@
+#!/bin/sh
+# Build Stage
+FROM python:3.12.1-bullseye AS builder
+WORKDIR /code
+ADD . /code
+RUN pip install --no-cache-dir -r /code/requirements.txt
+RUN pip install pyinstaller
+RUN pyinstaller -F --collect-all dateutil abyss.py
+
+# Runtime
+FROM ubuntu:22.04 AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y libc6
+COPY --from=builder /code/dist/abyss .
+EXPOSE 8050
+ENTRYPOINT ["./abyss"]

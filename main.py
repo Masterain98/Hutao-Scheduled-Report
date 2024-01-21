@@ -1,3 +1,4 @@
+import time
 from MysqlConn import MysqlConn
 import json
 import plotly.express as px
@@ -10,7 +11,7 @@ import requests
 
 # MySQL Settings
 MYSQL_HOST = os.getenv('MYSQL_HOST')
-MYSQL_PORT = int(os.getenv('MYSQL_PORT'))
+MYSQL_PORT = int(os.getenv('MYSQL_PORT', 3306))
 MYSQL_USER = os.getenv('MYSQL_USER')
 MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
 MYSQL_DATABASE = os.getenv('MYSQL_DATABASE')
@@ -209,6 +210,7 @@ def uid_layout():
                       title_x=0.5)
     pio.write_html(fig, file="assets/output/uploader_info.html", auto_open=True, include_plotlyjs="cdn",
                    include_mathjax="cdn")
+    print("Successfully generated uploader_info.html")
 
 
 def uid_layout_old():
@@ -248,7 +250,7 @@ def uid_layout_old():
 
 
 if __name__ == "__main__":
-    # user_per_schedule_bar()
     uid_layout()
-    # uid_layout_old()
-    # current_abyss_utilization_rate_rank()
+    while True:
+        time.sleep(60 * 60 * 6)
+        uid_layout()
