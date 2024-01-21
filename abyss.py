@@ -6,8 +6,26 @@ import numpy as np
 import requests
 import dash_bootstrap_components as dbc
 
-id_to_name_dict = {v: k for k, v in requests.get("https://api.uigf.org/dict/genshin/chs.json").json().items()}
-id_to_name_dict[10000005] = "旅行者"
+base_dict = requests.get("https://api.uigf.org/dict/genshin/all.json").json()
+id_to_name_dict = {}
+for lang, data in base_dict.items():
+    new_data = {v: k for k, v in data.items()}
+    id_to_name_dict[lang] = new_data
+AVAILABLE_LANGUAGES = {
+    "en": "English",
+    "chs": "简体中文",
+    "cht": "繁體中文",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "id": "Indonesia",
+    "jp": "日本語",
+    "kr": "한국어",
+    "pt": "Português",
+    "ru": "Русский",
+    "th": "ภาษาไทย",
+    "vi": "Tiếng Việt",
+}
 
 
 def make_current_utilization_rate_data() -> pd.DataFrame:
@@ -18,8 +36,11 @@ def make_current_utilization_rate_data() -> pd.DataFrame:
     for floor in result:
         floor_number = str(floor["Floor"])
         floor_data = [{"item": item["Item"], "Floor %s" % floor_number: item["Rate"],
-                       "schedule": current_schedule, "Character": id_to_name_dict[int(item["Item"])]}
-                      for item in floor["Ranks"]]
+                       "schedule": current_schedule} for item in floor["Ranks"]]
+        for item_data in floor_data:
+            for this_lang in AVAILABLE_LANGUAGES.keys():
+                item_data[this_lang] = id_to_name_dict[this_lang].get(item_data["item"], "Traveler")
+
         floor_data = sorted(floor_data, key=lambda x: x["item"], reverse=False)
         for item_data in floor_data:
             if item_data["item"] not in df_list.keys():
@@ -27,14 +48,17 @@ def make_current_utilization_rate_data() -> pd.DataFrame:
             else:
                 df_list[item_data["item"]]["Floor %s" % floor_number] = item_data["Floor %s" % floor_number]
     return_df = pd.DataFrame(list(df_list.values()))
-    return_df = return_df[["schedule", "Character", "Floor 9", "Floor 10", "Floor 11", "Floor 12"]]
+    return_df = return_df[
+        ["schedule", "Floor 9", "Floor 10", "Floor 11", "Floor 12"] + list(AVAILABLE_LANGUAGES.keys())]
     return return_df
 
 
 if __name__ == "__main__":
     df = make_current_utilization_rate_data()
+    dropdown_options = [{'label': v, 'value': k} for k, v in AVAILABLE_LANGUAGES.items()]
 
     app = Dash(__name__, external_stylesheets=[dbc.themes.JOURNAL])
+    app.title = 'Spiral Abyss Live Report by Masterain'
 
     # Main app layout
     app.layout = html.Div([
@@ -62,9 +86,9 @@ if __name__ == "__main__":
                                             dbc.NavLink("Snap Hutao", href="https://hut.ao", style={'color': 'white'})),
                                         dbc.NavItem(
                                             dbc.NavLink("Pizza Helper for Genshin",
-                                                        href="https://apps.apple.com/pw/app/pizza-helper-for-genshin/id1635319193",
+                                                        href="https://apps.apple.com/pw/app/pizza-helper-for-genshin"
+                                                             "/id1635319193",
                                                         style={'color': 'white'})),
-                                        # New item
                                     ],
                                     className="ml-auto flex-nowrap mt-3 mt-md-0", navbar=True
                                 ),
@@ -103,7 +127,19 @@ if __name__ == "__main__":
                                            className="mb-2"),
                         ])
                     ], className="mb-3"),
-                ], width=12),
+                ], width=6),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Select Language"),
+                        dbc.CardBody([
+                            dcc.Dropdown(
+                                id='language_dropdown',
+                                options=dropdown_options,
+                                value='chs',  # Set the initial value to Simplified Chinese
+                            ),
+                        ])
+                    ], className="mb-3"),
+                ], width=6),
             ]),
             dcc.Store(id='num_bins_store', storage_type='session'),
             dbc.Row([
@@ -126,7 +162,7 @@ if __name__ == "__main__":
                 ], width=6),
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader("Data Table"),
+                        dbc.CardHeader("Full Data Table"),
                         dbc.CardBody([
                             dash_table.DataTable(
                                 id='data_table',
@@ -135,7 +171,7 @@ if __name__ == "__main__":
                                 sort_action='native',
                                 sort_mode='single',
                                 columns=[
-                                    {"name": "Character", "id": "Character", "type": "text"},
+                                    {"name": "chs", "id": "chs", "type": "text"},
                                     {"name": "Floor 9", "id": "Floor 9", "type": "numeric",
                                      "format": {"specifier": ".2%"}},
                                     {"name": "Floor 10", "id": "Floor 10", "type": "numeric",
@@ -193,14 +229,14 @@ if __name__ == "__main__":
         }),
     ])
 
-
     # Add controls to build the interaction
     @callback(
         Output(component_id="floor_utilization_rate_graph", component_property='figure'),
         [Input(component_id="floor_radio_control", component_property='value'),
-         Input('num_bins_store', 'data')]
+         Input('num_bins_store', 'data'),
+         Input('language_dropdown', 'value')]
     )
-    def update_graph(col_chosen: str, num_bins: int):
+    def update_graph(col_chosen: str, num_bins: int, lang_chosen: str = 'chs'):
         # Limit the dataframe to the top num_bins characters
         limited_df = df.nlargest(num_bins, col_chosen)
 
@@ -224,13 +260,13 @@ if __name__ == "__main__":
         text_values = [f'{val:.2%}' for val in limited_df[col_chosen]]
 
         fig = go.Figure(data=[go.Bar(
-            x=limited_df['Character'],
+            x=limited_df[lang_chosen],
             y=limited_df[col_chosen],
             marker_color=colors,  # use the color array here
-            marker_line_color='rgb(8,48,107)',  # set the marker line color to dark blue
-            marker_line_width=1.5,  # set the marker line width to 1.5
-            text=text_values,  # set the text to the y-values
-            textposition='outside'  # position the text to be outside the bars
+            marker_line_color='rgb(8,48,107)',
+            marker_line_width=1.5,
+            text=text_values,
+            textposition='outside'
         )])
 
         fig.update_layout(
@@ -257,5 +293,23 @@ if __name__ == "__main__":
         return value
 
 
+    @app.callback(
+        Output('data_table', 'columns'),
+        [Input('language_dropdown', 'value')]
+    )
+    def update_table_columns(language: str):
+        return [
+            {"name": AVAILABLE_LANGUAGES[language], "id": language, "type": "text"},
+            {"name": "Floor 9", "id": "Floor 9", "type": "numeric",
+             "format": {"specifier": ".2%"}},
+            {"name": "Floor 10", "id": "Floor 10", "type": "numeric",
+             "format": {"specifier": ".2%"}},
+            {"name": "Floor 11", "id": "Floor 11", "type": "numeric",
+             "format": {"specifier": ".2%"}},
+            {"name": "Floor 12", "id": "Floor 12", "type": "numeric",
+             "format": {"specifier": ".2%"}}
+        ]
+
+
     if __name__ == '__main__':
-        app.run_server(debug=True)
+        app.run_server(debug=False)
